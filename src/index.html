@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Pseudo 3D Shooter</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #333;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      // Player settings
+      const player = {
+        x: 50,
+        y: 50,
+        angle: 0,
+        fov: Math.PI / 3, // Field of View
+        speed: 2,
+        rotationSpeed: 0.05,
+      };
+
+      // Map (1 = wall, 0 = empty)
+      const map = [
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 0, 0, 0, 1, 0, 1],
+        [1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+        [1, 0, 1, 0, 0, 1, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      ];
+
+      const cellSize = 64; // Size of each cell in the map
+
+      // Raycasting function
+      function castRay(angle) {
+        let hit = false;
+        let dist = 0;
+        const step = 0.5; // Smaller step for more precision
+
+        let rayX = player.x;
+        let rayY = player.y;
+
+        while (!hit && dist < 500) {
+          // Max ray distance
+          rayX += Math.cos(angle) * step;
+          rayY += Math.sin(angle) * step;
+
+          const mapX = Math.floor(rayX / cellSize);
+          const mapY = Math.floor(rayY / cellSize);
+
+          if (
+            mapX < 0 ||
+            mapX >= map[0].length ||
+            mapY < 0 ||
+            mapY >= map.length ||
+            map[mapY][mapX] === 1
+          ) {
+            hit = true;
+          }
+          dist += step;
+        }
+        return dist;
+      }
+
+      // Game loop
+      function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw ceiling (sky)
+        ctx.fillStyle = "#87CEEB";
+        ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
+
+        // Draw floor
+        ctx.fillStyle = "#6B8E23";
+        ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+
+        // Raycasting and rendering walls
+        for (let i = 0; i < canvas.width; i++) {
+          const rayAngle =
+            player.angle - player.fov / 2 + (i / canvas.width) * player.fov;
+          const distance = castRay(rayAngle);
+
+          // Simple "fisheye" correction
+          const correctedDistance =
+            distance * Math.cos(rayAngle - player.angle);
+
+          const wallHeight = (cellSize * canvas.height) / correctedDistance;
+          const wallY = (canvas.height - wallHeight) / 2;
+
+          // Simple shading based on distance
+          const shade = Math.max(0, 1 - correctedDistance / 500);
+          ctx.fillStyle = `rgba(100, 100, 100, ${shade})`;
+          ctx.fillRect(i, wallY, 1, wallHeight);
+        }
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      // Input handling
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowUp" || e.key === "w") {
+          player.x += Math.cos(player.angle) * player.speed;
+          player.y += Math.sin(player.angle) * player.speed;
+        }
+        if (e.key === "ArrowDown" || e.key === "s") {
+          player.x -= Math.cos(player.angle) * player.speed;
+          player.y -= Math.sin(player.angle) * player.speed;
+        }
+        if (e.key === "ArrowLeft" || e.key === "a") {
+          player.angle -= player.rotationSpeed;
+        }
+        if (e.key === "ArrowRight" || e.key === "d") {
+          player.angle += player.rotationSpeed;
+        }
+      });
+
+      gameLoop();
+    </script>
+  </body>
+</html>
